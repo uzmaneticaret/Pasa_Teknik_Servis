@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      UserRole @default(TECHNICIAN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services Service[]
+  
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services Service[]
+  
+  @@map("customers")
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  serviceNumber   String        @unique
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  technicianId    String?
+  technician      User?         @relation(fields: [technicianId], references: [id])
+  
+  deviceType      DeviceType
+  brand           String
+  model           String
+  serialNumber    String?
+  imei            String?
+  
+  problemDescription String
+  accessories      String?
+  physicalCondition String?
+  estimatedFee     Float?
+  actualFee       Float?
+  
+  status          ServiceStatus @default(RECEIVED)
+  statusHistory   ServiceStatusHistory[]
+  notificationLogs NotificationLog[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  completedAt     DateTime?
+  deliveredAt     DateTime?
+  
+  financialRecord FinancialRecord[]
+  
+  @@map("services")
+}
+
+model ServiceStatusHistory {
+  id        String        @id @default(cuid())
+  serviceId String
+  service   Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  status    ServiceStatus
+  notes     String?
+  changedBy String
+  changedAt DateTime      @default(now())
+  
+  @@map("service_status_history")
+}
+
+model FinancialRecord {
+  id          String      @id @default(cuid())
+  serviceId   String?
+  service     Service?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  amount      Float
+  type        FinancialType @default(INCOME)
+  description String?
+  recordedAt  DateTime    @default(now())
+  
+  @@map("financial_records")
+}
+
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+}
+
+enum DeviceType {
+  PHONE
+  LAPTOP
+  TABLET
+  DESKTOP
+  OTHER
+}
+
+enum ServiceStatus {
+  RECEIVED
+  DIAGNOSIS_PENDING
+  CUSTOMER_APPROVAL_PENDING
+  PARTS_PENDING
+  REPAIRING
+  COMPLETED_READY_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum FinancialType {
+  INCOME
+  EXPENSE
+}
+
+model NotificationLog {
+  id          String      @id @default(cuid())
+  type        String
+  serviceId   String
+  service     Service     @relation(fields: [serviceId], references: [id])
+  customerEmail String
+  status      String      // SENT, FAILED
+  subject     String
+  sentAt      DateTime
+  createdAt   DateTime    @default(now())
+  
+  @@map("notification_logs")
+}
